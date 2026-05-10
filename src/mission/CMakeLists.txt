@@ -10,6 +10,18 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(mission_msgs REQUIRED)
+
+add_executable(mission "src/mission_node.cpp" "src/main.cpp" "include/mission/mission_node.hpp")
+
+traget_link_libraries(mission
+  PRIVATE
+  rclcpp::rclcpp
+  rclcpp_action::rclcpp_action
+  mission_msgs::mission_msgs
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -22,5 +34,10 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+install(TARGETS
+  mission_node
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 ament_package()

@@ -11,6 +11,21 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(mission_msgs REQUIRED)
+find_package(px4_msgs REQUIRED)
+
+add_executable(px4_commmand "src/px4_command.cpp" "src/main.cpp" "include/px4_command/px4_command.hpp")
+
+target_link_libraries(px4_commmand
+  PRIVATE
+  rclcpp::rclcpp
+  rclcpp_action::rclcpp_action
+  mission_msgs::mission_msgs
+  px4_msgs::px4_msgs
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
@@ -22,5 +37,9 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+install(TARGETS
+  px4_commmand
+  DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

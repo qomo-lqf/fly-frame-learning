@@ -8,6 +8,9 @@
 #include "px4_msgs/msg/trajectory_setpoint.hpp"
 #include "px4_msgs/msg/vehicle_local_position.hpp"
 
+const float SET_POINT_EPSILON_M = 0.05f;
+const int SET_POINT_TIMEOUT_TIMES = 1000;
+
 class PX4Offboard : public rclcpp::Node
 {
 public :
@@ -28,6 +31,9 @@ private:
     float x_;
     float y_;
     float z_;
+    float vx_;
+    float vy_;
+    float vz_;
     float yaw_;
     void local_position_callback(const px4_msgs::msg::VehicleLocalPosition::SharedPtr msg);
 
@@ -35,7 +41,14 @@ private:
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     void heartbeat_timer_callback();
 
-    // action server callback
+    // action server callback & values
+    enum CONTROL_MODE : uint8_t
+    {
+        CTRL_MODE_POSITION = 0,
+        CTRL_MODE_VELOCITY = 1,
+        CTRL_MODE_ACCELERATION = 2,
+    };
+    uint8_t control_type_;
     rclcpp_action::GoalResponse set_point_goal_callback(
         const rclcpp_action::GoalUUID & uuid,
         std::shared_ptr<const mission_msgs::action::SetPoint::Goal> goal);
@@ -49,7 +62,7 @@ private:
         const std::shared_ptr<rclcpp_action::ServerGoalHandle<mission_msgs::action::SetPoint>> goal_handle);
 
     // frame transform 
-    std::array<float,3> frame_transform(float x, float y, float z, float yaw);
+    inline std::array<float,3> frame_transform(float x, float y, float z, float yaw);
 };
 
 
