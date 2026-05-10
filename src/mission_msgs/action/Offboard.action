@@ -1,0 +1,8 @@
+uint8 mode
+uint8 MODE_CUSTOM_MODE_ENABLED = 1
+
+uint8 custom_mode
+uint8 CUSTOM_MODE_OFFBOARD = 6
+---
+CommandAck ack
+---

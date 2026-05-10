@@ -1,0 +1,12 @@
+uint8 control_type
+uint8 CTRL_TYPE_POSITION = 0
+uint8 CTRL_TYPE_VELOCITY = 1
+uint8 CTRL_TYPE_ACCELERATION = 2
+
+geometry_msgs/Point value
+---
+CommandAck ack
+---
+geometry_msgs/Point position
+float32 yaw
+geometry_msgs/Vector3 velocity
