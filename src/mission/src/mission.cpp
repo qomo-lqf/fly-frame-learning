@@ -5,8 +5,7 @@
 
 using namespace std::chrono_literals;
 
-Mission::Mission() : Node("mission") , prearm_check_handle_({false,false,nullptr}), arm_handle_({false,false,nullptr})
-                        , offboard_handle_({false,false,nullptr}) , set_point_handle_({false,false,nullptr})
+Mission::Mission() : Node("mission") 
 {
     prearm_check_action_client_ = rclcpp_action::create_client<mission_msgs::action::PrearmCheck>(this, "/mission/prearm");
     arm_action_client_ = rclcpp_action::create_client<mission_msgs::action::Arm>(this, "/mission/arm");

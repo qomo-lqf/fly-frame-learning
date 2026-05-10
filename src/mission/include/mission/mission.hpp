@@ -17,9 +17,9 @@ public :
     template <typename ActionT>
     struct mission_handle_t
     {
-        bool is_finish;
-        bool is_success;
-        rclcpp_action::ClientGoalHandle<ActionT>::SharedPtr goal_handle;
+        bool is_finish = false;
+        bool is_success = false;
+        typename rclcpp_action::ClientGoalHandle<ActionT>::SharedPtr goal_handle = nullptr;
     };
 
     // flight missions

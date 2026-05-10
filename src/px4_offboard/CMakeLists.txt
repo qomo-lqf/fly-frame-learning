@@ -16,14 +16,23 @@ find_package(rclcpp_action REQUIRED)
 find_package(mission_msgs REQUIRED)
 find_package(px4_msgs REQUIRED)
 
-add_executable(px4_offboard src/px4_offboard.cpp src/node.cpp "include/px4_offboard/px4_offboard.hpp")
+add_executable(px4_offboard src/px4_offboard.cpp src/main.cpp "include/px4_offboard/px4_offboard.hpp")
+
+target_include_directories(px4_offboard
+  PUBLIC
+  "include/"
+  ${rclcpp_INCLUDE_DIRS}
+  ${rclcpp_action_INCLUDE_DIRS}
+  ${mission_msgs_INCLUDE_DIRS}
+  ${px4_msgs_INCLUDE_DIRS}
+)
 
 target_link_libraries(px4_offboard
-  PRIVATE
-  rclcpp::rclcpp
-  rclcpp_action::rclcpp_action
-  mission_msgs::mission_msgs
-  px4_msgs::px4_msgs
+  PUBLIC
+  ${rclcpp_LIBRARIES}
+  ${rclcpp_action_LIBRARIES}
+  ${mission_msgs_LIBRARIES}
+  ${px4_msgs_LIBRARIES}
 )
 
 if(BUILD_TESTING)

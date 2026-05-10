@@ -18,12 +18,21 @@ find_package(px4_msgs REQUIRED)
 
 add_executable(px4_commmand "src/px4_command.cpp" "src/main.cpp" "include/px4_command/px4_command.hpp")
 
+target_include_directories(px4_commmand
+  PUBLIC
+  "include/"
+  ${rclcpp_INCLUDE_DIRS}
+  ${rclcpp_action_INCLUDE_DIRS}
+  ${mission_msgs_INCLUDE_DIRS}
+  ${px4_msgs_INCLUDE_DIRS}
+)
+
 target_link_libraries(px4_commmand
-  PRIVATE
-  rclcpp::rclcpp
-  rclcpp_action::rclcpp_action
-  mission_msgs::mission_msgs
-  px4_msgs::px4_msgs
+  PUBLIC
+  ${rclcpp_LIBRARIES}
+  ${rclcpp_action_LIBRARIES}
+  ${mission_msgs_LIBRARIES}
+  ${px4_msgs_LIBRARIES}
 )
 
 if(BUILD_TESTING)

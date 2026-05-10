@@ -118,7 +118,8 @@ void PX4Offboard::set_point_execute(
 
     switch(control_type_)
     {
-        case CONTROL_MODE::CTRL_MODE_POSITION:
+        case CTRL_MODE_POSITION:
+        {
             px4_msgs::msg::TrajectorySetpoint set_point_msg_;
             set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
             set_point_msg_.position = frame_transform(goal->value.x, goal->value.y, goal->value.z, yaw_);
@@ -129,7 +130,9 @@ void PX4Offboard::set_point_execute(
             set_point_msg_.yawspeed = 0;
             trajectory_setpoint_pub_->publish(set_point_msg_);
             break;
-        case CONTROL_MODE::CTRL_MODE_VELOCITY:
+        }
+        case CTRL_MODE_VELOCITY:
+        {
             px4_msgs::msg::TrajectorySetpoint set_point_msg_;
             set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
             set_point_msg_.position = {0,0,0};
@@ -140,7 +143,9 @@ void PX4Offboard::set_point_execute(
             set_point_msg_.yawspeed = 0;
             trajectory_setpoint_pub_->publish(set_point_msg_);
             break;
-        case CONTROL_MODE::CTRL_MODE_ACCELERATION:
+        }
+        case CTRL_MODE_ACCELERATION:
+        {
             px4_msgs::msg::TrajectorySetpoint set_point_msg_;
             set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
             set_point_msg_.position = {0,0,0};
@@ -151,7 +156,9 @@ void PX4Offboard::set_point_execute(
             set_point_msg_.yawspeed = 0;
             trajectory_setpoint_pub_->publish(set_point_msg_);
             break;
+        }
         default:
+        {
             px4_msgs::msg::TrajectorySetpoint set_point_msg_;
             set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
             set_point_msg_.position = {0,0,0};
@@ -168,6 +175,7 @@ void PX4Offboard::set_point_execute(
             result->ack.result_param = 0;
             goal_handle->abort(result);
             break;
+        }
     }
 
     rclcpp::Rate loop_rate(10);

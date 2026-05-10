@@ -10,17 +10,26 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(mission_msgs REQUIRED)
 
-add_executable(mission "src/mission_node.cpp" "src/main.cpp" "include/mission/mission_node.hpp")
+add_executable(mission "src/mission.cpp" "src/main.cpp" "include/")
 
-traget_link_libraries(mission
-  PRIVATE
-  rclcpp::rclcpp
-  rclcpp_action::rclcpp_action
-  mission_msgs::mission_msgs
+target_include_directories(mission
+  PUBLIC
+  "include/"
+  ${rclcpp_INCLUDE_DIRS}
+  ${rclcpp_action_INCLUDE_DIRS}
+  ${mission_msgs_INCLUDE_DIRS}
+)
+
+target_link_libraries(mission
+  PUBLIC
+  ${rclcpp_LIBRARIES}
+  ${rclcpp_action_LIBRARIES}
+  ${mission_msgs_LIBRARIES}
 )
 
 if(BUILD_TESTING)
@@ -36,7 +45,7 @@ if(BUILD_TESTING)
 endif()
 
 install(TARGETS
-  mission_node
+  mission
   DESTINATION lib/${PROJECT_NAME}
 )
 
