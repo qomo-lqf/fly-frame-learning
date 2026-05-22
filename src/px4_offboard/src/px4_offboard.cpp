@@ -21,7 +21,7 @@ PX4Offboard::PX4Offboard() : Node("px4_offboard"),x_(0),y_(0),z_(0),yaw_(0),cont
 
     set_point_action_server_ = rclcpp_action::create_server<mission_msgs::action::SetPoint>(
         this,
-        "setpoint",
+        "/mission/set_point",
         std::bind(&PX4Offboard::set_point_goal_callback, this, std::placeholders::_1, std::placeholders::_2),
         std::bind(&PX4Offboard::set_point_cancel_callback, this, std::placeholders::_1),
         std::bind(&PX4Offboard::set_point_accepted_callback, this, std::placeholders::_1)
@@ -180,10 +180,10 @@ void PX4Offboard::set_point_execute(
     }
 
     rclcpp::Rate loop_rate(10);
-    float origin_x = x_;
-    float origin_y = y_;
-    float origin_z = z_;
     int timeout_counter = 0;
+    
+    // Store the target position for comparison
+    std::array<float, 3> target_pos = frame_transform(goal->value.x, goal->value.y, goal->value.z, yaw_);
     
     while (rclcpp::ok())
     {
@@ -225,7 +225,10 @@ void PX4Offboard::set_point_execute(
             return;
         }
 
-        if(abs(x_ - origin_x) < SET_POINT_EPSILON_M && abs(y_ - origin_y) < SET_POINT_EPSILON_M && abs(z_ - origin_z) < SET_POINT_EPSILON_M)
+        // Check if the drone has reached the target position
+        if(abs(x_ - target_pos[0]) < SET_POINT_EPSILON_M && 
+           abs(y_ - target_pos[1]) < SET_POINT_EPSILON_M && 
+           abs(z_ - target_pos[2]) < SET_POINT_EPSILON_M)
         {
             auto result = std::make_shared<mission_msgs::action::SetPoint::Result>();
             result->ack.success = true;

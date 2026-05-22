@@ -20,16 +20,12 @@ add_executable(mission "src/mission.cpp" "src/main.cpp")
 target_include_directories(mission
   PUBLIC
   "include/"
-  ${rclcpp_INCLUDE_DIRS}
-  ${rclcpp_action_INCLUDE_DIRS}
-  ${mission_msgs_INCLUDE_DIRS}
 )
 
-target_link_libraries(mission
-  PUBLIC
-  ${rclcpp_LIBRARIES}
-  ${rclcpp_action_LIBRARIES}
-  ${mission_msgs_LIBRARIES}
+ament_target_dependencies(mission
+  rclcpp
+  rclcpp_action
+  mission_msgs
 )
 
 if(BUILD_TESTING)

@@ -10,6 +10,7 @@ enum State
     INIT,
     PREARM,
     ARM,
+    OFFBOARD,
     WORK,
     DISARM,
     EXIT
@@ -44,6 +45,7 @@ int main(int argc , char** argv)
         {
             case INIT:
                 node -> prearm_check();
+                state = PREARM;
                 break;
             case PREARM:
                 if(node->get_prearm_check_handle().is_finish && node->get_prearm_check_handle().is_success)
@@ -55,46 +57,58 @@ int main(int argc , char** argv)
             case ARM:
                 if(node->get_arm_handle().is_finish && node->get_arm_handle().is_success)
                 {
-                    node -> set_point(0,0,0);
+                    node -> offboard();
+                    state = OFFBOARD;
+                }
+                break;
+            case OFFBOARD:
+                if(node->get_offboard_handle().is_finish && node->get_offboard_handle().is_success)
+                {
                     state = WORK;
                 }
                 break;
             case WORK:
 // -----------------设置航点区------------------ 
-                // 先发送第一个航点
-                if(mission_points.size() > 0) {
-                    auto first_point = mission_points[0];
-                    node->set_point(first_point.x, first_point.y, first_point.z);
+                static size_t current_point_idx = 0;
+                static bool first_wp_sent = false;
+
+                // 进入 WORK 后发送第一个航点
+                if(!first_wp_sent && mission_points.size() > 0) {
+                    node->set_point(mission_points[0].x, mission_points[0].y, mission_points[0].z);
+                    first_wp_sent = true;
                 }
-                
-                size_t current_point_idx = 0;
-                while(current_point_idx < mission_points.size())
+
+                // 当前航点完成后发送下一个
+                if(node->get_set_point_handle().is_finish)
                 {
-                    if(node->get_set_point_handle().is_finish)
+                    if(node->get_set_point_handle().is_success)
                     {
-                        if(node->get_set_point_handle().is_success)
+                        current_point_idx++;
+                        if(current_point_idx < mission_points.size())
                         {
-                            current_point_idx++;
-                            if(current_point_idx < mission_points.size())
-                            {
-                                auto point = mission_points[current_point_idx];
-                                node->set_point(point.x, point.y, point.z);
-                            }
+                            node->set_point(mission_points[current_point_idx].x,
+                                            mission_points[current_point_idx].y,
+                                            mission_points[current_point_idx].z);
                         }
                         else
                         {
-                            RCLCPP_ERROR(node->get_logger(), "Set point failed at index %zu", current_point_idx);
-                            break;
+                            // All waypoints completed
+                            node -> arm(false);
+                            state = DISARM;
+                            current_point_idx = 0;
+                            first_wp_sent = false;
                         }
                     }
-                    loop_rate.sleep();
+                    else
+                    {
+                        RCLCPP_ERROR(node->get_logger(), "Set point failed at index %zu", current_point_idx);
+                        node -> arm(false);
+                        state = DISARM;
+                        current_point_idx = 0;
+                        first_wp_sent = false;
+                    }
                 }
 // ---------------------------------------------
-                if(node->get_set_point_handle().is_finish && node->get_set_point_handle().is_success)
-                {
-                    node -> arm(false);
-                    state = DISARM;
-                }
                 break;
             case DISARM:
                 if(node->get_arm_handle().is_finish && node->get_arm_handle().is_success)

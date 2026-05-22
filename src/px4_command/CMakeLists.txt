@@ -21,18 +21,13 @@ add_executable(px4_command "src/px4_command.cpp" "src/main.cpp")
 target_include_directories(px4_command
   PUBLIC
   "include/"
-  ${rclcpp_INCLUDE_DIRS}
-  ${rclcpp_action_INCLUDE_DIRS}
-  ${mission_msgs_INCLUDE_DIRS}
-  ${px4_msgs_INCLUDE_DIRS}
 )
 
-target_link_libraries(px4_command
-  PUBLIC
-  ${rclcpp_LIBRARIES}
-  ${rclcpp_action_LIBRARIES}
-  ${mission_msgs_LIBRARIES}
-  ${px4_msgs_LIBRARIES}
+ament_target_dependencies(px4_command
+  rclcpp
+  rclcpp_action
+  mission_msgs
+  px4_msgs
 )
 
 if(BUILD_TESTING)
