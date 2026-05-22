@@ -1,5 +1,6 @@
 #include "px4_offboard/px4_offboard.hpp"
 #include <thread>
+#include <cmath>
 
 PX4Offboard::PX4Offboard() : Node("px4_offboard"),x_(0),y_(0),z_(0),yaw_(0),control_type_(CONTROL_MODE::CTRL_MODE_POSITION)
 {
@@ -169,12 +170,12 @@ void PX4Offboard::set_point_execute(
             set_point_msg_.yawspeed = 0;
             trajectory_setpoint_pub_->publish(set_point_msg_);
             RCLCPP_INFO(get_logger(), "Invalid control mode , holding");
-            std::shared_ptr<mission_msgs::action::SetPoint::Result> result = std::make_shared<mission_msgs::action::SetPoint::Result>();
+            auto result = std::make_shared<mission_msgs::action::SetPoint::Result>();
             result->ack.success = false;
             result->ack.message = "invalid control mode";
             result->ack.result_param = 0;
             goal_handle->abort(result);
-            break;
+            return;
         }
     }
 
@@ -183,6 +184,7 @@ void PX4Offboard::set_point_execute(
     float origin_y = y_;
     float origin_z = z_;
     int timeout_counter = 0;
+    
     while (rclcpp::ok())
     {
         if(goal_handle->is_canceling())
@@ -196,11 +198,12 @@ void PX4Offboard::set_point_execute(
             set_point_msg_.yaw = yaw_;
             set_point_msg_.yawspeed = 0;
             trajectory_setpoint_pub_->publish(set_point_msg_);
-            std::shared_ptr<mission_msgs::action::SetPoint::Result> result = std::make_shared<mission_msgs::action::SetPoint::Result>();
+            auto result = std::make_shared<mission_msgs::action::SetPoint::Result>();
             result->ack.success = true;
             result->ack.message = "set point canceled";
             result->ack.result_param = 0;
             goal_handle->canceled(result);
+            return;
         }
 
         if(timeout_counter > SET_POINT_TIMEOUT_TIMES)
@@ -214,23 +217,25 @@ void PX4Offboard::set_point_execute(
             set_point_msg_.yaw = yaw_;
             set_point_msg_.yawspeed = 0;
             trajectory_setpoint_pub_->publish(set_point_msg_);
-            std::shared_ptr<mission_msgs::action::SetPoint::Result> result = std::make_shared<mission_msgs::action::SetPoint::Result>();
+            auto result = std::make_shared<mission_msgs::action::SetPoint::Result>();
             result->ack.success = false;
             result->ack.message = "set point timeout";
             result->ack.result_param = 0;
             goal_handle->abort(result);
+            return;
         }
 
         if(abs(x_ - origin_x) < SET_POINT_EPSILON_M && abs(y_ - origin_y) < SET_POINT_EPSILON_M && abs(z_ - origin_z) < SET_POINT_EPSILON_M)
         {
-            std::shared_ptr<mission_msgs::action::SetPoint::Result> result = std::make_shared<mission_msgs::action::SetPoint::Result>();
+            auto result = std::make_shared<mission_msgs::action::SetPoint::Result>();
             result->ack.success = true;
             result->ack.message = "set point reached";
             result->ack.result_param = 0;
             goal_handle->succeed(result);
+            return;
         }
 
-        std::shared_ptr<mission_msgs::action::SetPoint::Feedback> feedback = std::make_shared<mission_msgs::action::SetPoint::Feedback>();
+        auto feedback = std::make_shared<mission_msgs::action::SetPoint::Feedback>();
         feedback->position.x = x_;
         feedback->position.y = y_;
         feedback->position.z = z_;
@@ -240,6 +245,8 @@ void PX4Offboard::set_point_execute(
         feedback->velocity.z = vz_;
         goal_handle->publish_feedback(feedback);
 
+        timeout_counter++;
+        loop_rate.sleep();
     }
 }
 
