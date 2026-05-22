@@ -1,6 +1,7 @@
 #include "mission/mission.hpp"
 
 #include <chrono>
+#include <future>
 #include <thread>
 
 using namespace std::chrono_literals;
@@ -14,8 +15,8 @@ Mission::Mission() : Node("mission")
 
 
 
-    std::future<bool> prearm_future = std::async([&](void) -> bool { 
-            if(!prearm_check_action_client_->wait_for_action_server(0.5s))
+    std::future<bool> prearm_future = std::async(std::launch::async, [&]() -> bool { 
+            while(!prearm_check_action_client_->wait_for_action_server(0.5s))
             {
                 if(!rclcpp::ok())
                 {
@@ -23,13 +24,13 @@ Mission::Mission() : Node("mission")
                     rclcpp::shutdown();
                     return false;
                 }
-                RCLCPP_INFO(this->get_logger(), "prearm action server not available after waiting... ");
+                RCLCPP_INFO(this->get_logger(), "prearm action server not available, waiting again... ");
             }
             return true;
     });
 
-    std::future<bool> arm_future = std::async([&](void) -> bool { 
-            if(!arm_action_client_->wait_for_action_server(0.5s))
+    std::future<bool> arm_future = std::async(std::launch::async, [&]() -> bool { 
+            while(!arm_action_client_->wait_for_action_server(0.5s))
             {
                 if(!rclcpp::ok())
                 {
@@ -37,13 +38,13 @@ Mission::Mission() : Node("mission")
                     rclcpp::shutdown();
                     return false;
                 }
-                RCLCPP_INFO(this->get_logger(), "arm action server not available after waiting... ");
+                RCLCPP_INFO(this->get_logger(), "arm action server not available, waiting again... ");
             }
             return true;
     });
 
-    std::future<bool> offboard_future = std::async([&](void) -> bool { 
-            if(!offboard_action_client_->wait_for_action_server(0.5s))
+    std::future<bool> offboard_future = std::async(std::launch::async, [&]() -> bool { 
+            while(!offboard_action_client_->wait_for_action_server(0.5s))
             {
                 if(!rclcpp::ok())
                 {
@@ -51,13 +52,13 @@ Mission::Mission() : Node("mission")
                     rclcpp::shutdown();
                     return false;
                 }
-                RCLCPP_INFO(this->get_logger(), "offboard action server not available after waiting... ");
+                RCLCPP_INFO(this->get_logger(), "offboard action server not available, waiting again... ");
             }
             return true;
     });
 
-    std::future<bool> set_point_future = std::async([&](void) -> bool { 
-            if(!set_point_action_client_->wait_for_action_server(0.5s))
+    std::future<bool> set_point_future = std::async(std::launch::async, [&]() -> bool { 
+            while(!set_point_action_client_->wait_for_action_server(0.5s))
             {
                 if(!rclcpp::ok())
                 {
@@ -65,7 +66,7 @@ Mission::Mission() : Node("mission")
                     rclcpp::shutdown();
                     return false;
                 }
-                RCLCPP_INFO(this->get_logger(), "set_point action server not available after waiting... ");
+                RCLCPP_INFO(this->get_logger(), "set_point action server not available, waiting again... ");
             }
             return true;
     });
@@ -167,6 +168,7 @@ void Mission::arm(bool is_arm)
             case rclcpp_action::ResultCode::ABORTED:
                 RCLCPP_ERROR(this->get_logger(), "Arm aborted or canceled, reason: %s" , result.result->ack.message.c_str());
                 arm_handle_.is_success = false;
+                break;
             default:
                 RCLCPP_ERROR(this->get_logger(), "Unknown result code.");
                 arm_handle_.is_success = false;
@@ -212,6 +214,7 @@ void Mission::offboard()
             case rclcpp_action::ResultCode::ABORTED:
                 RCLCPP_ERROR(this->get_logger(), "Offboard aborted or canceled, reason: %s" , result.result->ack.message.c_str());
                 offboard_handle_.is_success = false;
+                break;
             default:
                 RCLCPP_ERROR(this->get_logger(), "Unknown result code.");
                 offboard_handle_.is_success = false;
@@ -263,6 +266,7 @@ void Mission::set_point(double x, double y, double z, uint8_t control_type)
             case rclcpp_action::ResultCode::ABORTED:
                 RCLCPP_ERROR(this->get_logger(), "Set point aborted or canceled, reason: %s" , result.result->ack.message.c_str());
                 set_point_handle_.is_success = false;
+                break;
             default:
                 RCLCPP_ERROR(this->get_logger(), "Unknown result code.");
                 set_point_handle_.is_success = false;
