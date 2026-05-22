@@ -9,7 +9,7 @@ using namespace std::chrono_literals;
 
 // PX4 Command IDs
 constexpr uint32_t VEHICLE_CMD_ARM = 400;
-constexpr uint32_t VEHICLE_CMD_COMPONENT_ARM_DISARM = 400;
+constexpr uint32_t VEHICLE_CMD_PREARM_CHECK = 401;
 constexpr uint32_t VEHICLE_CMD_SET_MODE = 176;
 
 
@@ -78,7 +78,6 @@ void PX4Command::handle_prearm_check_accepted(
 void PX4Command::prearm_check_execute(const std::shared_ptr<rclcpp_action::ServerGoalHandle<mission_msgs::action::PrearmCheck>> goal_handle)
 {
     auto feedback = std::make_shared<mission_msgs::action::PrearmCheck::Feedback>();
-    bool all_success = true;
     
     for(int i = 0; i < 3; i++)
     {
@@ -89,7 +88,7 @@ void PX4Command::prearm_check_execute(const std::shared_ptr<rclcpp_action::Serve
         
         std::shared_ptr<px4_msgs::srv::VehicleCommand::Request> request = std::make_shared<px4_msgs::srv::VehicleCommand::Request>();
         request->request.timestamp = this->get_clock()->now().nanoseconds() / 1000;
-        request->request.command = VEHICLE_CMD_COMPONENT_ARM_DISARM;
+        request->request.command = VEHICLE_CMD_PREARM_CHECK;
         request->request.param1 = 0;
         request->request.param2 = 0;
         request->request.param3 = 0;
@@ -103,28 +102,26 @@ void PX4Command::prearm_check_execute(const std::shared_ptr<rclcpp_action::Serve
         request->request.source_component = 1;
         request->request.from_external = true;
         
-        auto future = vehicle_command_client_->async_send_request(request);
-        if (future.wait_for(1s) == std::future_status::ready) {
+        vehicle_command_client_->async_send_request(request, [this, goal_handle](const std::shared_future<std::shared_ptr<px4_msgs::srv::VehicleCommand::Response>> future)
+        { 
             const auto & reply = future.get();
             if(reply->reply.result != 0)
             {
-                RCLCPP_ERROR(this->get_logger(), "Prearm check step %d failed with result: %d", i, reply->reply.result);
-                all_success = false;
-                break;
+                std::shared_ptr<mission_msgs::action::PrearmCheck::Result> result = std::make_shared<mission_msgs::action::PrearmCheck::Result>();
+                result->ack.success = false;
+                result->ack.result_param = reply->reply.result;
+                result->ack.message = "prearm check failed";
+                goal_handle->abort(result);
             }
-        } else {
-            RCLCPP_ERROR(this->get_logger(), "Prearm check step %d timeout", i);
-            all_success = false;
-            break;
-        }
-        
+
+        });
+
         feedback->step = i + 1;
         goal_handle->publish_feedback(feedback);
-        std::this_thread::sleep_for(100ms);
     }
     
     auto result = std::make_shared<mission_msgs::action::PrearmCheck::Result>();
-    if (all_success && rclcpp::ok()) {
+    if (rclcpp::ok()) {
         result->ack.success = true;
         result->ack.result_param = 0;
         result->ack.message = "prearm check success";
@@ -164,7 +161,6 @@ void PX4Command::arm_execute(
 {
      const auto goal = goal_handle->get_goal();
      auto feedback = std::make_shared<mission_msgs::action::Arm::Feedback>();
-     bool all_success = true;
      
      if(goal->arm)
      {
@@ -191,29 +187,25 @@ void PX4Command::arm_execute(
             request->request.source_component = 1;
             request->request.from_external = true;
             
-            auto future = vehicle_command_client_->async_send_request(request);
-            if (future.wait_for(1s) == std::future_status::ready) {
+            vehicle_command_client_->async_send_request(request, [this, goal_handle](const std::shared_future<std::shared_ptr<px4_msgs::srv::VehicleCommand::Response>> future)
+            {
                 const auto & reply = future.get();
                 if(reply->reply.result != 0)
                 {
-                    RCLCPP_ERROR(this->get_logger(), "Arm command %d failed with result: %d", i, reply->reply.result);
-                    all_success = false;
-                    break;
+                    std::shared_ptr<mission_msgs::action::Arm::Result> result = std::make_shared<mission_msgs::action::Arm::Result>();
+                    result->ack.success = false;
+                    result->ack.result_param = reply->reply.result;
+                    result->ack.message = "arm failed";
+                    goal_handle->abort(result);
                 }
-            } else {
-                RCLCPP_ERROR(this->get_logger(), "Arm command %d timeout", i);
-                all_success = false;
-                break;
-            }
-            
+            });
             feedback->step = i + 1;
             goal_handle->publish_feedback(feedback);
-            std::this_thread::sleep_for(100ms);
         }
     }
     
     auto result = std::make_shared<mission_msgs::action::Arm::Result>();
-    if (all_success && rclcpp::ok()) {
+    if (rclcpp::ok()) {
         result->ack.success = true;
         result->ack.result_param = 0;
         result->ack.message = goal->arm ? "arm success" : "disarm success";
@@ -268,23 +260,21 @@ void PX4Command::offboard_execute(
     request->request.source_component = 1;
     request->request.from_external = true;
     
-    auto future = vehicle_command_client_->async_send_request(request);
-    bool success = false;
-    
-    if (future.wait_for(2s) == std::future_status::ready) {
+    vehicle_command_client_->async_send_request(request, [this, goal_handle](const std::shared_future<std::shared_ptr<px4_msgs::srv::VehicleCommand::Response>> future)
+    { 
         const auto & reply = future.get();
-        if(reply->reply.result == 0)
+        if(reply->reply.result != 0)
         {
-            success = true;
-        } else {
-            RCLCPP_ERROR(this->get_logger(), "Offboard mode change failed with result: %d", reply->reply.result);
+            std::shared_ptr<mission_msgs::action::Offboard::Result> result = std::make_shared<mission_msgs::action::Offboard::Result>();
+            result->ack.success = false;
+            result->ack.result_param = reply->reply.result;
+            result->ack.message = "offboard mode change failed";
+            goal_handle->abort(result);
         }
-    } else {
-        RCLCPP_ERROR(this->get_logger(), "Offboard mode change timeout");
-    }
+    });
     
     auto result = std::make_shared<mission_msgs::action::Offboard::Result>();
-    if (success && rclcpp::ok()) {
+    if (rclcpp::ok()) {
         result->ack.success = true;
         result->ack.result_param = 0;
         result->ack.message = "offboard mode change success";
