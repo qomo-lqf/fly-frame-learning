@@ -16,9 +16,9 @@ find_package(rclcpp_action REQUIRED)
 find_package(mission_msgs REQUIRED)
 find_package(px4_msgs REQUIRED)
 
-add_executable(px4_commmand "src/px4_command.cpp" "src/main.cpp" "include/px4_command/px4_command.hpp")
+add_executable(px4_command "src/px4_command.cpp" "src/main.cpp")
 
-target_include_directories(px4_commmand
+target_include_directories(px4_command
   PUBLIC
   "include/"
   ${rclcpp_INCLUDE_DIRS}
@@ -27,7 +27,7 @@ target_include_directories(px4_commmand
   ${px4_msgs_INCLUDE_DIRS}
 )
 
-target_link_libraries(px4_commmand
+target_link_libraries(px4_command
   PUBLIC
   ${rclcpp_LIBRARIES}
   ${rclcpp_action_LIBRARIES}
@@ -48,7 +48,7 @@ if(BUILD_TESTING)
 endif()
 
 install(TARGETS
-  px4_commmand
+  px4_command
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
