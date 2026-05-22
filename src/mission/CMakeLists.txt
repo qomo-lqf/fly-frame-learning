@@ -15,7 +15,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(mission_msgs REQUIRED)
 
-add_executable(mission "src/mission.cpp" "src/main.cpp" "include/")
+add_executable(mission "src/mission.cpp" "src/main.cpp")
 
 target_include_directories(mission
   PUBLIC
