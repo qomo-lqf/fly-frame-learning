@@ -41,6 +41,16 @@ private:
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     void heartbeat_timer_callback();
 
+    // timer execute
+    float goal_x;
+    float goal_y;
+    float goal_z;
+    float origin_x;
+    float origin_y;
+    float origin_z;
+    void set_point_update();
+
+
     // action server callback & values
     enum CONTROL_MODE : uint8_t
     {

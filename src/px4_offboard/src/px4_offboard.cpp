@@ -65,6 +65,70 @@ void PX4Offboard::heartbeat_timer_callback()
     msg.thrust_and_torque = false;
     msg.direct_actuator = false;
     offboard_control_mode_pub_->publish(msg);
+    set_point_update();
+}
+
+void PX4Offboard::set_point_update()
+{
+    float x = goal_x - (x_ - origin_x);
+    float y = goal_y - (y_ - origin_y);
+    float z = goal_z - (z_ - origin_z);
+    switch(control_type_)
+    {
+        case CTRL_MODE_POSITION:
+        {
+            px4_msgs::msg::TrajectorySetpoint set_point_msg_;
+            set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
+            set_point_msg_.position = frame_transform(x, y, z, yaw_);
+            set_point_msg_.velocity = {0,0,0};
+            set_point_msg_.acceleration = {0,0,0};
+            set_point_msg_.jerk = {0,0,0};
+            set_point_msg_.yaw = yaw_;
+            set_point_msg_.yawspeed = 0;
+            trajectory_setpoint_pub_->publish(set_point_msg_);
+            break;
+        }
+        case CTRL_MODE_VELOCITY:
+        {
+            px4_msgs::msg::TrajectorySetpoint set_point_msg_;
+            set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
+            set_point_msg_.position = {0,0,0};
+            set_point_msg_.velocity = frame_transform(x, y, z, yaw_);
+            set_point_msg_.acceleration = {0,0,0};
+            set_point_msg_.jerk = {0,0,0};
+            set_point_msg_.yaw = yaw_;
+            set_point_msg_.yawspeed = 0;
+            trajectory_setpoint_pub_->publish(set_point_msg_);
+            break;
+        }
+        case CTRL_MODE_ACCELERATION:
+        {
+            px4_msgs::msg::TrajectorySetpoint set_point_msg_;
+            set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
+            set_point_msg_.position = {0,0,0};
+            set_point_msg_.velocity = {0,0,0};
+            set_point_msg_.acceleration = frame_transform(x, y, z, yaw_);
+            set_point_msg_.jerk = {0,0,0};
+            set_point_msg_.yaw = yaw_;
+            set_point_msg_.yawspeed = 0;
+            trajectory_setpoint_pub_->publish(set_point_msg_);
+            break;
+        }
+        default:
+        {
+            px4_msgs::msg::TrajectorySetpoint set_point_msg_;
+            set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
+            set_point_msg_.position = {0,0,0};
+            set_point_msg_.velocity = {0,0,0};
+            set_point_msg_.acceleration = {0,0,0};
+            set_point_msg_.jerk = {0,0,0};
+            set_point_msg_.yaw = yaw_;
+            set_point_msg_.yawspeed = 0;
+            trajectory_setpoint_pub_->publish(set_point_msg_);
+            RCLCPP_INFO(get_logger(), "Invalid control mode , holding");
+            break;
+        }
+    }
 }
 
 rclcpp_action::GoalResponse PX4Offboard::set_point_goal_callback(
@@ -73,6 +137,9 @@ rclcpp_action::GoalResponse PX4Offboard::set_point_goal_callback(
 {
     RCLCPP_INFO(get_logger(), "Received goal request");
     (void)uuid;
+    goal_x = goal->value.x;
+    goal_y = goal->value.y;
+    goal_z = goal->value.z;
     switch(goal->control_type)
     {
         case CONTROL_MODE::CTRL_MODE_POSITION :
@@ -92,6 +159,9 @@ rclcpp_action::GoalResponse PX4Offboard::set_point_goal_callback(
             break;
         default:
             RCLCPP_ERROR(get_logger(), "Invalid control mode");
+            goal_x = 0;
+            goal_y = 0;
+            goal_z = 0;
             return rclcpp_action::GoalResponse::REJECT;
     }
 }
@@ -116,86 +186,19 @@ void PX4Offboard::set_point_execute(
     auto goal = goal_handle->get_goal();
     RCLCPP_INFO(get_logger(), "Executing goal : \n mode : %d \n x : %f \n y : %f \n z : %f \n current yaw : %f",goal->control_type, goal->value.x ,goal->value.y, goal->value.z, yaw_ );
 
-    switch(control_type_)
-    {
-        case CTRL_MODE_POSITION:
-        {
-            px4_msgs::msg::TrajectorySetpoint set_point_msg_;
-            set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
-            set_point_msg_.position = frame_transform(goal->value.x, goal->value.y, goal->value.z, yaw_);
-            set_point_msg_.velocity = {0,0,0};
-            set_point_msg_.acceleration = {0,0,0};
-            set_point_msg_.jerk = {0,0,0};
-            set_point_msg_.yaw = yaw_;
-            set_point_msg_.yawspeed = 0;
-            trajectory_setpoint_pub_->publish(set_point_msg_);
-            break;
-        }
-        case CTRL_MODE_VELOCITY:
-        {
-            px4_msgs::msg::TrajectorySetpoint set_point_msg_;
-            set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
-            set_point_msg_.position = {0,0,0};
-            set_point_msg_.velocity = frame_transform(goal->value.x, goal->value.y, goal->value.z, yaw_);
-            set_point_msg_.acceleration = {0,0,0};
-            set_point_msg_.jerk = {0,0,0};
-            set_point_msg_.yaw = yaw_;
-            set_point_msg_.yawspeed = 0;
-            trajectory_setpoint_pub_->publish(set_point_msg_);
-            break;
-        }
-        case CTRL_MODE_ACCELERATION:
-        {
-            px4_msgs::msg::TrajectorySetpoint set_point_msg_;
-            set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
-            set_point_msg_.position = {0,0,0};
-            set_point_msg_.velocity = {0,0,0};
-            set_point_msg_.acceleration = frame_transform(goal->value.x, goal->value.y, goal->value.z, yaw_);
-            set_point_msg_.jerk = {0,0,0};
-            set_point_msg_.yaw = yaw_;
-            set_point_msg_.yawspeed = 0;
-            trajectory_setpoint_pub_->publish(set_point_msg_);
-            break;
-        }
-        default:
-        {
-            px4_msgs::msg::TrajectorySetpoint set_point_msg_;
-            set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
-            set_point_msg_.position = {0,0,0};
-            set_point_msg_.velocity = {0,0,0};
-            set_point_msg_.acceleration = {0,0,0};
-            set_point_msg_.jerk = {0,0,0};
-            set_point_msg_.yaw = yaw_;
-            set_point_msg_.yawspeed = 0;
-            trajectory_setpoint_pub_->publish(set_point_msg_);
-            RCLCPP_INFO(get_logger(), "Invalid control mode , holding");
-            std::shared_ptr<mission_msgs::action::SetPoint::Result> result = std::make_shared<mission_msgs::action::SetPoint::Result>();
-            result->ack.success = false;
-            result->ack.message = "invalid control mode";
-            result->ack.result_param = 0;
-            goal_handle->abort(result);
-            break;
-        }
-    }
-
     rclcpp::Rate loop_rate(10);
-    float origin_x = x_;
-    float origin_y = y_;
-    float origin_z = z_;
+    origin_x = x_;
+    origin_y = y_;
+    origin_z = z_;
     int timeout_counter = 0;
     while (rclcpp::ok())
     {
         if(goal_handle->is_canceling())
         {
             px4_msgs::msg::TrajectorySetpoint set_point_msg_;
-            set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
-            set_point_msg_.position = {0,0,0};
-            set_point_msg_.velocity = {0,0,0};
-            set_point_msg_.acceleration = {0,0,0};
-            set_point_msg_.jerk = {0,0,0};
-            set_point_msg_.yaw = yaw_;
-            set_point_msg_.yawspeed = 0;
-            trajectory_setpoint_pub_->publish(set_point_msg_);
+            goal_x = 0;
+            goal_y = 0;
+            goal_z = 0;
             std::shared_ptr<mission_msgs::action::SetPoint::Result> result = std::make_shared<mission_msgs::action::SetPoint::Result>();
             result->ack.success = true;
             result->ack.message = "set point canceled";
@@ -206,14 +209,9 @@ void PX4Offboard::set_point_execute(
         if(timeout_counter > SET_POINT_TIMEOUT_TIMES)
         {
             px4_msgs::msg::TrajectorySetpoint set_point_msg_;
-            set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
-            set_point_msg_.position = {0,0,0};
-            set_point_msg_.velocity = {0,0,0};
-            set_point_msg_.acceleration = {0,0,0};
-            set_point_msg_.jerk = {0,0,0};
-            set_point_msg_.yaw = yaw_;
-            set_point_msg_.yawspeed = 0;
-            trajectory_setpoint_pub_->publish(set_point_msg_);
+            goal_x = 0;
+            goal_y = 0;
+            goal_z = 0;
             std::shared_ptr<mission_msgs::action::SetPoint::Result> result = std::make_shared<mission_msgs::action::SetPoint::Result>();
             result->ack.success = false;
             result->ack.message = "set point timeout";
@@ -239,6 +237,8 @@ void PX4Offboard::set_point_execute(
         feedback->velocity.y = vy_;
         feedback->velocity.z = vz_;
         goal_handle->publish_feedback(feedback);
+
+        loop_rate.sleep();
 
     }
 }
