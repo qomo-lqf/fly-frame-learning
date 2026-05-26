@@ -7,6 +7,7 @@
 #include "mission_msgs/action/offboard.hpp"
 #include "mission_msgs/action/prearm_check.hpp"
 #include "mission_msgs/action/set_point.hpp"
+#include "px4_msgs/msg/vehicle_status.hpp"
 
 class Mission : public rclcpp::Node
 {
@@ -19,7 +20,7 @@ public :
     {
         bool is_finish = false;
         bool is_success = false;
-        typename rclcpp_action::ClientGoalHandle<ActionT>::SharedPtr goal_handle = nullptr;
+        // typename rclcpp_action::ClientGoalHandle<ActionT>::SharedPtr goal_handle = nullptr;
     };
 
     // flight missions
@@ -34,12 +35,18 @@ public :
     const mission_handle_t<mission_msgs::action::Offboard> get_offboard_handle() const {return offboard_handle_;};
     const mission_handle_t<mission_msgs::action::SetPoint> get_set_point_handle() const {return set_point_handle_;};
 
+    void set_set_point_handle(bool is_finish, bool is_success) {set_point_handle_ = {is_finish, is_success};};
+
 private :
     //action clients
     rclcpp_action::Client<mission_msgs::action::PrearmCheck>::SharedPtr prearm_check_action_client_;
     rclcpp_action::Client<mission_msgs::action::Arm>::SharedPtr arm_action_client_;
     rclcpp_action::Client<mission_msgs::action::Offboard>::SharedPtr offboard_action_client_;
     rclcpp_action::Client<mission_msgs::action::SetPoint>::SharedPtr set_point_action_client_;
+
+    //subscribers(monitor) & callbacks
+    rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr vehicle_status_sub_;
+    void vehicle_status_callback(const px4_msgs::msg::VehicleStatus::SharedPtr msg);
 
     //mission handles
     mission_handle_t<mission_msgs::action::PrearmCheck> prearm_check_handle_;

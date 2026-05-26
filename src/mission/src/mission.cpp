@@ -13,7 +13,11 @@ Mission::Mission() : Node("mission")
     offboard_action_client_ = rclcpp_action::create_client<mission_msgs::action::Offboard>(this, "/mission/offboard");
     set_point_action_client_ = rclcpp_action::create_client<mission_msgs::action::SetPoint>(this, "/mission/set_point");
 
+    rmw_qos_profile_t qos_profile = rmw_qos_profile_sensor_data;
+    auto qos = rclcpp::QoS(rclcpp::QoSInitialization(qos_profile.history, 5), qos_profile);
 
+    vehicle_status_sub_ = this -> create_subscription<px4_msgs::msg::VehicleStatus>("/fmu/out/vehicle_status_v1", qos, 
+        std::bind(&Mission::vehicle_status_callback, this, std::placeholders::_1));
 
     std::future<bool> prearm_future = std::async(std::launch::async, [&]() -> bool { 
             while(!prearm_check_action_client_->wait_for_action_server(0.5s))
@@ -85,6 +89,14 @@ Mission::Mission() : Node("mission")
         RCLCPP_INFO(this->get_logger(), "Mission ready.");
     }
 
+}
+
+void Mission::vehicle_status_callback(const px4_msgs::msg::VehicleStatus::SharedPtr msg)
+{
+    uint8_t arming_state = msg->arming_state;
+    uint8_t nav_state = msg->nav_state;
+
+    RCLCPP_INFO(this->get_logger(), "Arming state: %d, Nav state: %d", arming_state, nav_state);
 }
 
 void Mission::prearm_check()

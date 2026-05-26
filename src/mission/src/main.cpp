@@ -26,10 +26,10 @@ struct MissionPoint
 };
 
 std::vector<MissionPoint> mission_points = {
-    {0.0, 0.0, 3.0},
+    {0.0, 0.0, -3.0},
     {1.0, 0.0, 0.0},
     {0.0, 1.0, 0.0},
-    {0.0, 0.0, -3.0}
+    {0.0, 0.0, 3.0}
 };
 
 int main(int argc , char** argv)
@@ -105,6 +105,7 @@ int main(int argc , char** argv)
                     if(node->get_set_point_handle().is_success)
                     {
                         current_point_idx++;
+                        node -> set_set_point_handle(false, false);
                         if(current_point_idx < mission_points.size())
                         {
                             node->set_point(mission_points[current_point_idx].x,

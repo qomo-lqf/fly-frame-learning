@@ -2,13 +2,15 @@
 #include <thread>
 #include <cmath>
 
+#define DEBUG
+
 PX4Offboard::PX4Offboard() : Node("px4_offboard"),x_(0),y_(0),z_(0),yaw_(0),control_type_(CONTROL_MODE::CTRL_MODE_POSITION)
 {
     rmw_qos_profile_t qos_profile = rmw_qos_profile_sensor_data;
     auto qos = rclcpp::QoS(rclcpp::QoSInitialization(qos_profile.history, 5), qos_profile);
 
     local_position_sub_ = create_subscription<px4_msgs::msg::VehicleLocalPosition>(
-        "fmu/out/vehicle_local_position", qos, std::bind(&PX4Offboard::local_position_callback, this, std::placeholders::_1));
+        "fmu/out/vehicle_local_position_v1", qos, std::bind(&PX4Offboard::local_position_callback, this, std::placeholders::_1));
 
     offboard_control_mode_pub_ = create_publisher<px4_msgs::msg::OffboardControlMode>(
         "fmu/in/offboard_control_mode", 10);
@@ -71,16 +73,24 @@ void PX4Offboard::heartbeat_timer_callback()
 
 void PX4Offboard::set_point_update()
 {
-    float x = goal_x - (x_ - origin_x);
-    float y = goal_y - (y_ - origin_y);
-    float z = goal_z - (z_ - origin_z);
+    // float x = goal_x - (x_ - origin_x);
+    // float y = goal_y - (y_ - origin_y);
+    // float z = goal_z - (z_ - origin_z);
+
+    float x = goal_x + origin_x;
+    float y = goal_y + origin_y;
+    float z = goal_z + origin_z;
+
+#ifdef DEBUG 
+    RCLCPP_INFO(get_logger(), "x: %f, y: %f, z: %f", x, y, z);
+#endif
     switch(control_type_)
     {
         case CTRL_MODE_POSITION:
         {
             px4_msgs::msg::TrajectorySetpoint set_point_msg_;
             set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
-            set_point_msg_.position = frame_transform(x, y, z, yaw_);
+            set_point_msg_.position = {x, y, z};
             set_point_msg_.velocity = {0,0,0};
             set_point_msg_.acceleration = {0,0,0};
             set_point_msg_.jerk = {0,0,0};
@@ -94,7 +104,7 @@ void PX4Offboard::set_point_update()
             px4_msgs::msg::TrajectorySetpoint set_point_msg_;
             set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
             set_point_msg_.position = {0,0,0};
-            set_point_msg_.velocity = frame_transform(x, y, z, yaw_);
+            set_point_msg_.velocity = {x, y, z};
             set_point_msg_.acceleration = {0,0,0};
             set_point_msg_.jerk = {0,0,0};
             set_point_msg_.yaw = yaw_;
@@ -108,7 +118,7 @@ void PX4Offboard::set_point_update()
             set_point_msg_.timestamp = get_clock()->now().nanoseconds() / 1000;
             set_point_msg_.position = {0,0,0};
             set_point_msg_.velocity = {0,0,0};
-            set_point_msg_.acceleration = frame_transform(x, y, z, yaw_);
+            set_point_msg_.acceleration = {x, y, z};
             set_point_msg_.jerk = {0,0,0};
             set_point_msg_.yaw = yaw_;
             set_point_msg_.yawspeed = 0;
@@ -138,9 +148,10 @@ rclcpp_action::GoalResponse PX4Offboard::set_point_goal_callback(
 {
     RCLCPP_INFO(get_logger(), "Received goal request");
     (void)uuid;
-    goal_x = goal->value.x;
-    goal_y = goal->value.y;
-    goal_z = goal->value.z;
+    std::array<float,3> goal_xyz = frame_transform(goal->value.x, goal->value.y, goal->value.z, yaw_);
+    goal_x = goal_xyz[0];
+    goal_y = goal_xyz[1];
+    goal_z = goal_xyz[2];
     switch(goal->control_type)
     {
         case CONTROL_MODE::CTRL_MODE_POSITION :
@@ -227,9 +238,9 @@ void PX4Offboard::set_point_execute(
         }
 
         // Check if the drone has reached the target position
-        if(abs(x_ - target_pos[0]) < SET_POINT_EPSILON_M && 
-           abs(y_ - target_pos[1]) < SET_POINT_EPSILON_M && 
-           abs(z_ - target_pos[2]) < SET_POINT_EPSILON_M)
+        if(abs(x_ - target_pos[0] - origin_x) < SET_POINT_EPSILON_M && 
+           abs(y_ - target_pos[1] - origin_y) < SET_POINT_EPSILON_M && 
+           abs(z_ - target_pos[2] - origin_z) < SET_POINT_EPSILON_M)
         {
             auto result = std::make_shared<mission_msgs::action::SetPoint::Result>();
             result->ack.success = true;
@@ -256,5 +267,6 @@ void PX4Offboard::set_point_execute(
 
 inline std::array<float, 3> PX4Offboard::frame_transform(float x, float y, float z, float yaw)
 {
+    yaw = yaw * M_PI / 180.0;
     return {x * cos(yaw) - y * sin(yaw), x * sin(yaw) + y * cos(yaw), z}; 
 }
