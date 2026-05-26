@@ -14,6 +14,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(mission_msgs REQUIRED)
+find_package(px4_msgs REQUIRED)
 
 add_executable(mission "src/mission.cpp" "src/main.cpp")
 
@@ -26,6 +27,7 @@ ament_target_dependencies(mission
   rclcpp
   rclcpp_action
   mission_msgs
+  px4_msgs
 )
 
 if(BUILD_TESTING)
