@@ -97,6 +97,8 @@ void Mission::prearm_check()
         if (!goal_handle)
         {
             RCLCPP_ERROR(this->get_logger(), "Prearm check failed.");
+            prearm_check_handle_.is_success = false;
+            prearm_check_handle_.is_finish = true;
         }
         else
         {
@@ -130,7 +132,7 @@ void Mission::prearm_check()
     };
 
     auto goal_handle_future = prearm_check_action_client_->async_send_goal(goal, send_goal_options);
-    prearm_check_handle_.goal_handle = goal_handle_future.get();
+    // prearm_check_handle_.goal_handle = goal_handle_future.get();
 }
 
 void Mission::arm(bool is_arm)
@@ -144,6 +146,8 @@ void Mission::arm(bool is_arm)
         if (!goal_handle)
         {
             RCLCPP_ERROR(this->get_logger(), "Arm failed.");
+            arm_handle_.is_success = false;
+            arm_handle_.is_finish = true;
         }
         else
         {
@@ -177,7 +181,7 @@ void Mission::arm(bool is_arm)
     };
 
     auto goal_handle_future = arm_action_client_->async_send_goal(goal, send_goal_options);
-    arm_handle_.goal_handle = goal_handle_future.get();
+    //arm_handle_.goal_handle = goal_handle_future.get();
 }
 
 void Mission::offboard()
@@ -223,7 +227,7 @@ void Mission::offboard()
     };
 
     auto goal_handle_future = offboard_action_client_->async_send_goal(goal, send_goal_options);
-    offboard_handle_.goal_handle = goal_handle_future.get();
+    //offboard_handle_.goal_handle = goal_handle_future.get();
 }
 
 void Mission::set_point(double x, double y, double z, uint8_t control_type)
@@ -241,6 +245,8 @@ void Mission::set_point(double x, double y, double z, uint8_t control_type)
         if (!goal_handle)
         {
             RCLCPP_ERROR(this->get_logger(), "Set point failed.");
+            set_point_handle_.is_success = false;
+            set_point_handle_.is_finish = true;
         }
         else
         {
@@ -254,8 +260,8 @@ void Mission::set_point(double x, double y, double z, uint8_t control_type)
                 RCLCPP_INFO(this->get_logger(), "Set point feedback: \n Position (ref : start postion) : (%f, %f, %f) , Velocity : (%f, %f, %f)",
                     feedback->position.x, feedback->position.y, feedback->position.z, feedback->velocity.x, feedback->velocity.y, feedback->velocity.z);
             };
-    
-    send_goal_options.result_callback = [&](const rclcpp_action::ClientGoalHandle<mission_msgs::action::SetPoint>::WrappedResult &result) -> void { 
+
+    send_goal_options.result_callback = [&](const rclcpp_action::ClientGoalHandle<mission_msgs::action::SetPoint>::WrappedResult &result) -> void {
         switch (result.code)
         {
             case rclcpp_action::ResultCode::SUCCEEDED:
@@ -275,5 +281,5 @@ void Mission::set_point(double x, double y, double z, uint8_t control_type)
     };
 
     auto goal_handle_future = set_point_action_client_->async_send_goal(goal, send_goal_options);
-    set_point_handle_.goal_handle = goal_handle_future.get();
+    //set_point_handle_.goal_handle = goal_handle_future.get();
 }

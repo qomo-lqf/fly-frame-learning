@@ -1,5 +1,7 @@
 #include "mission/mission.hpp"
 
+#define DEBUG
+
 #include <vector>
 #include <chrono>
 
@@ -35,8 +37,15 @@ int main(int argc , char** argv)
     State state = INIT;
     rclcpp::init(argc, argv);
     auto node = std::make_shared<Mission>();
+#ifdef DEBUG
+        RCLCPP_INFO(node->get_logger(), "main checkpoint1 : Mission node 初始化完毕");
+#endif
     rclcpp::executors::SingleThreadedExecutor executor;
     executor.add_node(node);
+
+#ifdef DEBUG
+        RCLCPP_INFO(node->get_logger(), "main checkpoint1 : Mission node 加入单线程执行器完毕");
+#endif
 
     rclcpp::Rate loop_rate(10);
     while(rclcpp::ok())
@@ -46,12 +55,18 @@ int main(int argc , char** argv)
             case INIT:
                 node -> prearm_check();
                 state = PREARM;
+#ifdef DEBUG
+                RCLCPP_INFO(node->get_logger(), "Prearm check");
+#endif
                 break;
             case PREARM:
                 if(node->get_prearm_check_handle().is_finish && node->get_prearm_check_handle().is_success)
                 {
                     node -> arm(true);
                     state = ARM;
+#ifdef DEBUG
+                RCLCPP_INFO(node->get_logger(), "Arm command sent");
+#endif
                 }
                 break;
             case ARM:
@@ -59,12 +74,18 @@ int main(int argc , char** argv)
                 {
                     node -> offboard();
                     state = OFFBOARD;
+#ifdef DEBUG
+                RCLCPP_INFO(node->get_logger(), "Offboard command sent");
+#endif
                 }
                 break;
             case OFFBOARD:
                 if(node->get_offboard_handle().is_finish && node->get_offboard_handle().is_success)
                 {
                     state = WORK;
+#ifdef DEBUG
+                RCLCPP_INFO(node->get_logger(), "Entering WORK state");
+#endif
                 }
                 break;
             case WORK:
@@ -114,6 +135,9 @@ int main(int argc , char** argv)
                 if(node->get_arm_handle().is_finish && node->get_arm_handle().is_success)
                 {
                     state = EXIT;
+#ifdef DEBUG
+                RCLCPP_INFO(node->get_logger(), "Mission completed, exiting");
+#endif
                 }
         }
         executor.spin_once(1s);

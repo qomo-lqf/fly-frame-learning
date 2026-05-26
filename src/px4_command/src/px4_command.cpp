@@ -1,5 +1,7 @@
 #include "px4_command/px4_command.hpp"
 
+#define DEBUG
+
 #include <chrono>
 #include <thread>
 #include <functional>
@@ -15,10 +17,10 @@ constexpr uint32_t VEHICLE_CMD_SET_MODE = 176;
 
 PX4Command::PX4Command(): Node("px4_command")
 {
-    rmw_qos_profile_t qos_profile = rmw_qos_profile_sensor_data;
-    auto qos = rclcpp::QoS(rclcpp::QoSInitialization(qos_profile.history, 5), qos_profile);
+    // rmw_qos_profile_t qos_profile = rmw_qos_profile_sensor_data;
+    // auto qos = rclcpp::QoS(rclcpp::QoSInitialization(qos_profile.history, 5), qos_profile);
     
-    vehicle_command_client_ = this->create_client<px4_msgs::srv::VehicleCommand>("/fmu/vehicle_command",qos);
+    vehicle_command_client_ = this->create_client<px4_msgs::srv::VehicleCommand>("/fmu/vehicle_command");
     
     while (!vehicle_command_client_->wait_for_service(0.5s)) {
         if (!rclcpp::ok()) {
@@ -58,14 +60,14 @@ rclcpp_action::GoalResponse PX4Command::handle_prearm_check_goal(
     const rclcpp_action::GoalUUID & uuid,
     std::shared_ptr<const mission_msgs::action::PrearmCheck::Goal> goal)
 {
-    RCLCPP_INFO(this->get_logger(), "Received goal request ");
+    RCLCPP_INFO(this->get_logger(), "Received prearm goal request ");
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
 rclcpp_action::CancelResponse PX4Command::handle_prearm_check_cancel(
     const std::shared_ptr<rclcpp_action::ServerGoalHandle<mission_msgs::action::PrearmCheck>> goal_handle)
 {
-    RCLCPP_INFO(this->get_logger(), "Received request to cancel goal");
+    RCLCPP_INFO(this->get_logger(), "Received request to cancel prearm goal");
     return rclcpp_action::CancelResponse::ACCEPT;
 }
 
@@ -77,6 +79,10 @@ void PX4Command::handle_prearm_check_accepted(
 
 void PX4Command::prearm_check_execute(const std::shared_ptr<rclcpp_action::ServerGoalHandle<mission_msgs::action::PrearmCheck>> goal_handle)
 {
+#ifdef DEBUG
+    RCLCPP_INFO(this->get_logger(), "prearm check execute");
+#endif
+
     auto feedback = std::make_shared<mission_msgs::action::PrearmCheck::Feedback>();
     
     for(int i = 0; i < 3; i++)
@@ -101,7 +107,11 @@ void PX4Command::prearm_check_execute(const std::shared_ptr<rclcpp_action::Serve
         request->request.source_system = 1;
         request->request.source_component = 1;
         request->request.from_external = true;
-        
+
+#ifdef DEBUG
+        RCLCPP_INFO(this->get_logger(), "prearm check checkpoint1 ： request发送前");
+#endif
+
         vehicle_command_client_->async_send_request(request, [this, goal_handle](const std::shared_future<std::shared_ptr<px4_msgs::srv::VehicleCommand::Response>> future)
         { 
             const auto & reply = future.get();
@@ -116,10 +126,17 @@ void PX4Command::prearm_check_execute(const std::shared_ptr<rclcpp_action::Serve
 
         });
 
+#ifdef DEBUG
+        RCLCPP_INFO(this->get_logger(), "prearm check checkpoint2 ： feedback发送前");
+#endif
         feedback->step = i + 1;
         goal_handle->publish_feedback(feedback);
     }
     
+#ifdef DEBUG
+        RCLCPP_INFO(this->get_logger(), "prearm check checkpoint3 : result发送前");
+#endif
+
     auto result = std::make_shared<mission_msgs::action::PrearmCheck::Result>();
     if (rclcpp::ok()) {
         result->ack.success = true;
@@ -132,20 +149,24 @@ void PX4Command::prearm_check_execute(const std::shared_ptr<rclcpp_action::Serve
         result->ack.message = "prearm check failed";
         goal_handle->abort(result);
     }
+#ifdef DEBUG
+        RCLCPP_INFO(this->get_logger(), "prearm check checkpoint4： result发送完毕");
+#endif
+
 }
 
 rclcpp_action::GoalResponse PX4Command::handle_arm_goal(
     const rclcpp_action::GoalUUID & uuid,
     std::shared_ptr<const mission_msgs::action::Arm::Goal> goal)
 {
-    RCLCPP_INFO(this->get_logger(), "Received goal request : %s", goal->arm ? "arm" : "disarm" );
+    RCLCPP_INFO(this->get_logger(), "Received arm goal request : %s", goal->arm ? "arm" : "disarm" );
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE; 
 }
 
 rclcpp_action::CancelResponse PX4Command::handle_arm_cancel(
     const std::shared_ptr<rclcpp_action::ServerGoalHandle<mission_msgs::action::Arm>> goal_handle)
 {
-    RCLCPP_INFO(this->get_logger(), "Received request to cancel goal");
+    RCLCPP_INFO(this->get_logger(), "Received request to cancel arm goal");
     return rclcpp_action::CancelResponse::ACCEPT;
 }
 
@@ -159,6 +180,10 @@ void PX4Command::handle_arm_accepted(
 void PX4Command::arm_execute(
     const std::shared_ptr<rclcpp_action::ServerGoalHandle<mission_msgs::action::Arm>> goal_handle)
 {
+#ifdef DEBUG
+    RCLCPP_INFO(this->get_logger(), "arm execute");
+#endif
+
      const auto goal = goal_handle->get_goal();
      auto feedback = std::make_shared<mission_msgs::action::Arm::Feedback>();
      
@@ -222,14 +247,14 @@ rclcpp_action::GoalResponse PX4Command::handle_offboard_goal(
     const rclcpp_action::GoalUUID & uuid,
     std::shared_ptr<const mission_msgs::action::Offboard::Goal> goal)
 {
-    RCLCPP_INFO(this->get_logger(), "Received goal request : %d , %d", goal->mode , goal->custom_mode);
+    RCLCPP_INFO(this->get_logger(), "Received goal offboard request : %d , %d", goal->mode , goal->custom_mode);
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE; 
 }
 
 rclcpp_action::CancelResponse PX4Command::handle_offboard_cancel(
     const std::shared_ptr<rclcpp_action::ServerGoalHandle<mission_msgs::action::Offboard>> goal_handle)
 {
-    RCLCPP_INFO(this->get_logger(), "Received request to cancel goal");
+    RCLCPP_INFO(this->get_logger(), "Received request to cancel offboard goal");
     return rclcpp_action::CancelResponse::ACCEPT;
 }
 
@@ -243,6 +268,10 @@ void PX4Command::handle_offboard_accepted(
 void PX4Command::offboard_execute(
     const std::shared_ptr<rclcpp_action::ServerGoalHandle<mission_msgs::action::Offboard>> goal_handle)
 {
+#ifdef DEBUG
+    RCLCPP_INFO(this->get_logger(), "offboard execute");
+#endif
+
     const auto goal = goal_handle->get_goal();
     std::shared_ptr<px4_msgs::srv::VehicleCommand::Request> request = std::make_shared<px4_msgs::srv::VehicleCommand::Request>();
     request->request.timestamp = this->get_clock()->now().nanoseconds() / 1000;
